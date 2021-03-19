@@ -1,0 +1,365 @@
+---
+title: "Projeto Curso Marketing Analytics - UFG"
+author: "Marcos José Rodrigues de Souza"
+date: "1/26/2021"
+output:
+  html_document: default
+  pdf_document: default
+subtitle: Prof. Marcos Severo & Prof. Tiago Marques
+---
+
+![alt text][logo]
+
+[logo]: https://levanteideias.com.br/wp-content/uploads/elementor/thumbs/ipo-do-airbnb-oznx92btat6skzlbr0qjz06n8wbcd4jcipu30wtw94.jpg
+
+### Introdução
+
+**airbnb** é uma empresa americana que opera um mercado online e serviço de hospitalidade para as pessoas alugarem ou alugarem hospedagem de curto prazo, incluindo casas de férias, apartamentos, casas de família, camas em albergues ou quartos de hotel, para participar ou facilitar experiências relacionadas ao turismo, como caminhadas passeios e reservas em restaurantes. A empresa não possui nenhum imóvel nem realiza passeios; é uma corretora que recebe taxas de serviço percentuais em conjunto com cada reserva. Como todos os serviços de hospitalidade, o AirBnB é um exemplo de consumo colaborativo e compartilhamento. A empresa tem mais de 4 milhões de listagens de hospedagem em 65.000 cidades e 191 países e facilitou mais de 260 milhões de check-in's.
+
+O objetivo deste projeto foi fazer a importação, limpeza e formatação dos dados, visualização, uma breve análise exploratória nos dados e alguns testes de hipóteses a respeito dos dados de utilização do aplicativo **airbnb** na base de dados disponibilizada na web pela mesma da cidade do Rio de Janeiro.
+
+- Outro objetivo deste estudo é buscar respostas para as seguintes questões:
+   - 1.Que tipo de propriedade `room type` é mais listado no AirBnB no Rio de Janeiro?
+   - 2.Quais são os bairros `neighbourhood_cleansed` que mais são listados - top 10?
+   - 3.Qual é a distribuíção dos bairros top 10 por tipo de propriedade `room type` e pontuação geral das avaliações `review_scores_rating`?
+   - 4.Qual é a distribuíção por tipo de propriedade `room type` e preço `price`?
+   - 5.Qual é a média dos preços por noite `price` por bairro top 10 `neighbourhood_cleansed`?
+   - 6.Com base nos dados dos 10 bairros mais listados: 
+      - a. qual é a taxa de ocupação respectivas?
+      - b. quais são os fatores que podem influenciar no preço?
+  
+**Conjunto de dados** 
+
+- O conjunto de dados analisado é oriundo da web, especificamente no site da **Inside airbnb**.
+  - url:  "http://data.insideairbnb.com/brazil/rj/rio-de-janeiro/2020-12-23/data/listings.csv.gz"
+  
+  
+  Variáveis utilizadas | Descrição 
+  --- | ---
+`host_id` | um número único que identifica um host Airbnb
+`neighbourhood_cleansed` | bairro
+`room_type` |  “Casa/apto inteiro”, “Quarto privado” ou “Quarto compartilhado”
+`price` | o preço (em R$) por uma noite de estadia
+`accommodates`| o número de hóspedes que uma listagem pode acomodar
+`beds`| o número de camas que uma lista oferece
+`minimum_nights` | estadia mínima 
+`number_of_reviews` | o número de comentários que uma listagem recebeu
+`reviews_per_month` | o número de resenhas que uma listagem recebeu por mês
+`review_scores_rating` | a pontuação geral das avaliações
+`host_listings_count` | o número de listagens para um determinado host.
+`avaiability_365` | o número de dias durante o qual um determinado host está disponível em um ano.
+
+- Temos registros resultantes de um *scrap* realizado em 23 de dezembro de 2020 referente à cidade do Rio de Janeiro.
+
+
+**Hipoteses**
+- O principal objetivo da análise é descobrir se os preços atribuídos por cada host e a pontuação geral das avaliações são significativamente dependentes dos fatores acima mencionados ou não. 
+  - MODELO  - A hipótese nula, H0 é o preço é independente de todos os parâmetros acima. E a hipótese alternativa, H1 é que o preço depende dos parâmetros acima.
+  
+### Modelo de Regressão
+#### MODELO 
+- `price` = -2.0545 + (-70.48)room_typePrivate room + (-438.20)room_typeShared room + (191.64)accomodates + (-31.55)beds + (-0.96)minimum_nights + (-2.47)numer_of_reviews + (0.58)host_listings_count + (123.77)occupancy_rate
+
+Estatisticamente significante foram os seguintes parametros:
+ - `accommodates` - este em todos intervalos de confiança (90%, 95% e 99%)
+ - `host_listings_count`
+ - `occupancy_rate`
+ - `room_typeShared room`
+ - `host_listings_count` 
+ - `beds`
+ - `number_of_reviews` - este em todos intervalos de confiança (90%, 95% e 99%)
+
+
+### Inferência
+- O preço foi afetado principalmente pelo tipo de quarto, ou seja, quarto privado, quarto compartilhado, número de acomodações, número de camas e taxa de ocupação. Os outros parâmetros têm impacto mínimo no preço de cada um listagem.
+
+
+### Conclusão
+- A análise feita na listagem do airbnb na cidade do Rio de Janeiro, nos forneceu que os anfitriões decidem os preços com base no `accommodates`,`host_listings_count`,`occupancy_rate`,`room_typeShared room`,`host_listings_count` ,`beds` e `number_of_reviews`. O tipo de quarto pareceu ser o fator mais significativo que afetou o preço. Como o valor múltiplo de r ao quadrado para o modelo foi de 0.1642 e  p-value: < 2.2e-16, pode-se dizer que também podem haver outros parâmetros além deste estudo que possuem impacto no preço.
+
+
+### Referências
+-1.http://insideairbnb.com/get-the-data.html. 
+-2.https://en.wikipedia.org/wiki/Airbnb 
+-3.http://tomslee.net/airbnb-data-collection-get-the-data
+
+---
+### Apêndice Com Estatística Descritiva (Código em linguagem R)
+R version 4.0.3 (2020-10-10)
+R Studio Version 1.4.1103
+
+**Bibliotecas**
+
+```{r}
+library(stringr)
+library(dplyr)
+library(Hmisc)
+library(psych)
+library(readr)
+library(corrplot)
+library(corrgram)
+library(car)
+```
+
+#### Criando data set para o R para análise e variável taxa de ocupação `occupancy_rate`
+```{r}
+url <- "http://data.insideairbnb.com/brazil/rj/rio-de-janeiro/2020-12-23/data/listings.csv.gz"
+```
+
+```{r eval = TRUE, message = FALSE, warning = FALSE}
+airbnb.rio <- read_csv(paste(url,sep = " ",collapse = NULL,recycle0 = FALSE))
+
+airbnb.rio <- airbnb.rio %>%
+  mutate(occupancy_rate = (availability_365/365))%>% glimpse()
+  
+dim(airbnb.rio)
+```                       
+
+#### Estatística Descritiva
+```{r}
+summary(airbnb.rio)
+```
+- Existem 25.784 propriedades listadas nesse banco de dados com 75 variávies iniciais.
+
+- Pode-se verificar que a taxa de ocupação média das propriedades é de **58,99%** ao longo do ano.
+
+- Algumas etapas deverão ser aplicadas para limpeza dos dados,
+    1. Converter em variável numérica `price` que está em formato texto,
+    
+```{r}
+airbnb.rio1 <- airbnb.rio%>% mutate(
+  price = str_replace(string = price, pattern = ",", replacement = ""),
+  price = str_replace(string = price, pattern = " ", replacement = ""),
+  price = str_replace(string = price, pattern = ".", replacement = ""),
+  price = str_replace_na(string = price, NA)
+)
+
+airbnb.rio1 <- within(airbnb.rio1, {price <- as.numeric(price)})
+
+sd(airbnb.rio1$price)
+```
+     2. Remover "outliers" (valores superiores 3x desvio padrão)
+```{r}
+airbnb.rio2 <- subset(airbnb.rio1, airbnb.rio1$price < 15539)
+```
+
+    3. Completar "missing values" `price` com o valor da média (706.4151)
+```{r}
+mean(airbnb.rio2$price)
+```
+
+```{r}
+airbnb.rio2$price <- coalesce(airbnb.rio2$price, 706.451)
+```
+
+4. Completar "missing values" `review_scores_rating` com o valor da média (94.69)
+```{r}
+airbnb.rio2$review_scores_rating <- coalesce(airbnb.rio2$review_scores_rating, 94.69)
+```
+
+5. Completar "missing values" `host_listings_count` com o valor da média (8.339)
+```{r}
+airbnb.rio2$host_listings_count <- coalesce(airbnb.rio2$host_listings_count, 8.339)
+```
+
+6. Completar "missing values" `reviews_per_month` com o valor da média (0.59)
+```{r}
+airbnb.rio2$reviews_per_month <- coalesce(airbnb.rio2$reviews_per_month, 0.59)
+```
+
+7. Completar "missing values" `beds` com o valor da média (2.545)
+```{r}
+airbnb.rio2$beds <- coalesce(airbnb.rio2$beds, 2.545)
+```
+
+8. Converter em variável categórica `room type` que está em formato texto,
+```{r}
+airbnb.rio3 <- within(airbnb.rio2, {room_type <- as.factor(room_type)})
+```
+
+
+
+#### Criando tabelas de contingência para variáveis no data set
+##### Repondendo perguntas do objetivo  
+• 1.Que tipo de propriedade `room type` é mais listado no AirBnB no Rio de Janeiro?
+> Observa-se que a modalidade de maior frequência é **casa/apto todo com 72,12% (18535)**, seguido por **quartos privados com 25,11% (6454)**, **quartos compartilhados com 2,32% (597)** e **quartos em hotéis com 0,44% (113)**
+
+```{r}
+local({
+    .Table <- with(airbnb.rio3, table(room_type))
+    cat("\ncounts:\n")
+    print(.Table)
+    cat("\npercentages:\n")
+    print(round(100*.Table/sum(.Table), 2))
+})
+```
+
+• 2.Quais são os bairros `neighbourhood_cleansed` que mais são listados?
+> Observa-se que *10 bairros de maior frequência - top 10* são:
+  - **28,56% (7340) registros em Copacabana**
+  - 10,05% (2583) registros na Barra da Tijuca
+  -  9,52% (2447) registros em Ipanema
+  -  5,14% (1322) registros em Jacarépagua
+  -  4,65% (1195) registros em Botafogo
+  -  4,36% (1120) registros no Recreio dos Bandeirantes
+  -  3,45% (886) registros em Santa Teresa
+  -  2,89% (742) registros no Centro
+  -  2,25% (579) registros no Flamengo
+  -  1,91% (491) registros no Leme
+  totalizando **44,22% das propriedades listadas no AirBnB**
+  
+```{r}
+local({
+    .Table <- with(airbnb.rio3, table(neighbourhood_cleansed))
+    cat("\ncounts:\n")
+    print(.Table)
+    cat("\npercentages:\n")
+    print(round(100*.Table/sum(.Table), 2))
+})
+```
+
+#### Box plot
+##### Preço `price` 
+- Verifica-se que é uma distribuíção assimétrica
+```{r}
+boxplot(airbnb.rio3$price, horizontal = TRUE, main = "Box Plot variável Preço", xlab = "Preço", col = "red")
+```
+#### Box plot 
+##### Pontuação geral das avaliações `review_scores_rating`
+- Verifica-se que é uma distribuíção assimétrica
+```{r}
+boxplot(airbnb.rio3$review_scores_rating, horizontal = TRUE, main = "Box Plot variável pontuação geral das avaliações", xlab = "Classificação", col = "yellow")
+```
+
+#### Criando variáveis transformadas para análise
+```{r}
+airbnb.rio4 <- airbnb.rio3%>% mutate(
+  l_price = log(price),
+  l_review_scores_rating = log(review_scores_rating),
+  l_accommodates = log(accommodates),
+  l_occupancy_rate = log(occupancy_rate),
+  l_host_listings_count = log(host_listings_count),
+  l_reviews_per_month = log(reviews_per_month),
+  l_number_of_reviews = log(number_of_reviews),
+  l_minimum_nights = log(minimum_nights),
+  l_beds = log(beds)
+)
+
+```
+
+
+#### agregado por bairros top 10 para análise e preservando subdata set
+```{r}
+Rio_by_neighbourhood <- aggregate(airbnb.rio4$price ~ neighbourhood_cleansed, data = airbnb.rio4, FUN = mean)
+
+sub_top10 <- subset(airbnb.rio4, airbnb.rio4$neighbourhood_cleansed == c("Copacabana", "Barra da Tijuca", "Ipanema", 
+                                                          "Jacarepaguá", "Botafogo", "Leblon", 
+                                                          "Recreio dos Bandeirantes", "Santa Teresa",
+                                                          "Centro", "Flamengo"))
+
+write.csv(sub_top10, "top10.csv", row.names = FALSE)
+
+```
+
+
+• 3.Qual é a distribuíção nos "top 10 bairros" por tipo de propriedade `room type` e classificação geral do host `review_scores_rating`?  
+> Analisando pela classificação geral dada pelo usuário por tipo de propriedade, observa-se que o tipo de propriedade  **Casa toda/apto é de maior frequência (1581)**, sendo que tiveram **score '100'** a frequencia foi **362**. Neste tipo de propriedade **84,92% (856) tiveram score entre '90 e 100'**, seguido por **Private room (438), Shared room (35) e Hotel room (10)**
+
+```{r}
+airbnb_con_table1<-xtabs(~ room_type + review_scores_rating, data = sub_top10)
+addmargins(airbnb_con_table1)
+```
+
+• 4.Qual é a distribuíção nos "top 10 bairros" por tipo de propriedade `room type` e preço `price`?
+> Analisando o tipo de propriedade `room type` e preço ajustado `price_adjusted`, observa-se que o tipo de propriedade  **Casa toda/apto é de maior frequência 2,47% (39) ao preço de $500** , seguidos por **1,27% (20) ao preço de $600**,**1,14% (18) ao preço de $450**, **1,08% (17) ao preço de $1.200**, **1,01% (16) ao preço de $1.500**, **0,7% (11) ao preço de $120 **, **0,63% (10) ao preço de $1.035** totalizando **8,3% dos maiores preços listados nos bairros top 10**  
+
+```{r}
+airbnb_con_table2<-xtabs(~ room_type + price, data = sub_top10)
+addmargins(airbnb_con_table2)
+```
+#### Distribuição gráfica
+```{r}
+ggplot(sub_top10, aes(y = price, x = room_type)) +
+  geom_point() +
+  geom_smooth()
+```
+
+
+• 5.Qual é a média dos preços por noite `price` por bairro top 10 `neighbourhood_cleansed`?
+- Analisando a média dos preços por noite para os bairros top 10 temos:
+ - **$ 1.030,7 Leblon**
+ - $   952,1 Barra da Tijuca
+ - $   843,9 Ipanema
+ - $   765,6 Recreio dos Bandeirantes
+ - $   726,9 Copacabana
+ - $   609,8 Jacarepaguá
+ - $   518,9 Santa Teresa
+ - $   457,7 Flamengo
+ - $   425,7 Botafogo
+ - $   384,6 Centro
+
+```{r}
+Tapply(price ~ neighbourhood_cleansed, mean, na.action=na.omit, data=sub_top10) # mean by groups
+```
+
+• 6.Com base nos dados dos 10 bairros mais listados: 
+      - a. qual é a taxa de ocupação `occupancy_rate` respectivas?
+      
+Analisando a taxa de ocupação no ano para os bairros top 10 temos:
+ - 64,60% Barra da Tijuca
+ - 63,71% Recreio dos Bandeirantes
+ - 63,27% Santa Teresa
+ - 61,89% Jacarepaguá
+ - 61,31% Flamengo
+ - 57,20% Leblon
+ - 56,90% Botafogo
+ - 56,74% Copacabana
+ - 56,15% Ipanema
+ - 51,05% Centro
+
+```{r}
+Tapply(occupancy_rate ~ neighbourhood_cleansed, mean, na.action=na.omit, data=sub_top10) # mean by groups
+```
+
+- b. quais são os fatores que podem influenciar no preço?
+ 
+#### Selecionando variáveis para matriz de correlação
+```{r}
+DF_corr <- sub_top10 %>%
+  select("price","review_scores_rating","accommodates","host_listings_count","reviews_per_month", "number_of_reviews", "minimum_nights", "beds", "occupancy_rate")
+```
+
+##### Correlação 
+- Verifica-se que existe uma relações lineares positivas entre `price` com `accommodates` e `beds`de valores fracos (0,3871 e 0,2611 respectivamente), relações lineares positivas entre `reviews_per_month` e `number_of_reviews` de valor moderado (0,6344) e uma relação linear positiva entre `accommodates`e 'beds` de valor forte (0,7428).
+```{r}
+c_pearson = cor(DF_corr)
+cor(DF_corr)
+```
+
+```{r}
+corrplot(
+  c_pearson,
+  method = "color",
+  cl.pos = "b",
+  type = "lower",
+  addgrid.col = "white",
+  addCoef.col = "white",
+  tl.col = "black",
+  tl.cex = 0.7,
+  number.cex = 0.7,
+  cl.cex = 0.7)
+```
+
+
+#### Generando Corgram (outra visualização)
+```{r}
+corrgram(DF_corr, order=TRUE, lower.panel=panel.shade,upper.panel=panel.pie, text.panel=panel.txt,main="Corrgram para as variáveis escolhidas")
+```
+### Análise de regressão
+##### Modelo 
+```{r}
+regression_model <- lm(price ~ room_type + accommodates + minimum_nights + maximum_nights + number_of_reviews + host_listings_count + occupancy_rate + beds  , data = sub_top10)
+
+summary(regression_model)
+```
+
